@@ -2,7 +2,7 @@
 /** ===============================================================================
 Plugin Name: Get CF in API
 Plugin URI: https://github.com/DjackSounds/get_cf_in_api
-Description: Add the possibility to get all your custom fields with the Wordpress REST API
+Description: Add the possibility to get all your custom fields (including ACF) with the Wordpress REST API
 Version: 1
 Author: Thomas Billaud
 Author URI: https://thomas-billaud.com/
@@ -25,6 +25,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
  **/
 
+if ( ! defined( 'ABSPATH' ) ) {
+    exit; // Exit if accessed directly.
+}
+
 /*** Here we go ***/
 add_action( 'rest_api_init', 'get_cf_add_custom_fields' );
 function get_cf_add_custom_fields() {
@@ -46,14 +50,15 @@ function get_cf_get_custom_fields( $object ) {
 
     $customfields = $wpdb->get_results("SELECT meta_key, meta_value FROM {$wpdb->prefix}postmeta WHERE post_id='". $object["id"] ."' and meta_key NOT LIKE '\_%'", OBJECT);
 
-    if( class_exists('acf') )
-        $acf = true;
-
-    foreach ($customfields as $customfield) {
-        if ($customfield->meta_value == ""){
+    foreach ( $customfields as $customfield ) {
+        if ( $customfield->meta_value == "" ){
             $values[$customfield->meta_key] = false;
         }else{
-            $acf = true ? $values[$customfield->meta_key] = get_field($customfield->meta_key, $object["id"]) : $values[$customfield->meta_key] = $customfield->meta_value;
+            if( class_exists('acf') ){
+                $values[$customfield->meta_key] = get_field($customfield->meta_key, $object["id"]);
+            }else {
+                $values[$customfield->meta_key] = $customfield->meta_value;
+            }
         }
     }
     return $values;
