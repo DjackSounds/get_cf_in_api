@@ -1,12 +1,11 @@
 <?php
 /** ===============================================================================
 Plugin Name: Get CF in API
-Plugin URI: https://snapcreek.com/duplicator/duplicator-free/
-Description: Migrate and backup a copy of your WordPress files and database. Duplicate and move a site from one location to another quickly.
-Version: 1.3.24
-Author: Snap Creek
-Author URI: http://www.snapcreek.com/duplicator/
-Text Domain: duplicator
+Plugin URI: https://github.com/DjackSounds/get_cf_in_api
+Description: Add the possibility to get all your custom fields with the Wordpress REST API
+Version: 1
+Author: Thomas Billaud
+Author URI: https://thomas-billaud.com/
 License: GPLv2 or later
 
 Copyright 2011-2017  SnapCreek LLC
@@ -24,6 +23,38 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
-SOURCE CONTRIBUTORS:
-David Coveney of Interconnect IT Ltd
-https://github.com/interconnectit/Search-Replace-DB/
+ **/
+
+/*** Here we go ***/
+add_action( 'rest_api_init', 'get_cf_add_custom_fields' );
+function get_cf_add_custom_fields() {
+    register_rest_field(
+        'post',
+        'custom_fields', //New Field Name in JSON RESPONSEs
+        array(
+            'get_callback'    => 'get_cf_get_custom_fields', // custom function name
+            'update_callback' => null,
+            'schema'          => null,
+        )
+    );
+}
+
+function get_cf_get_custom_fields( $object ) {
+
+    global $wpdb;
+    $acf = false;
+
+    $customfields = $wpdb->get_results("SELECT meta_key, meta_value FROM {$wpdb->prefix}postmeta WHERE post_id='". $object["id"] ."' and meta_key NOT LIKE '\_%'", OBJECT);
+
+    if( class_exists('acf') )
+        $acf = true;
+
+    foreach ($customfields as $customfield) {
+        if ($customfield->meta_value == ""){
+            $values[$customfield->meta_key] = false;
+        }else{
+            $acf = true ? $values[$customfield->meta_key] = get_field($customfield->meta_key, $object["id"]) : $values[$customfield->meta_key] = $customfield->meta_value;
+        }
+    }
+    return $values;
+}
